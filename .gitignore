@@ -1,0 +1,21 @@
+# Virtualenv
+venv/
+.venv/
+
+# External project clones (install deps from requirements.txt instead)
+TTS/
+Auralis/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Runtime artifacts: generated audio + browser mic recordings (private data)
+webapp/outputs/
+webapp/uploads/
+webapp/server.log
+out_*.wav
+
+# OS
+.DS_Store

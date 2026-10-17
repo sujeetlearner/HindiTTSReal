@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coqui XTTS v2 — Speech Test</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#1a2129; --panel2:#212b36; --text:#e7ecf1;
+    --muted:#8b98a5; --accent:#3fb27f; --accent2:#4a9eff; --border:#2c3743;
+    --err:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.5;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:32px 20px 64px}
+  header{display:flex; align-items:center; gap:12px; margin-bottom:8px}
+  .logo{font-size:26px}
+  h1{font-size:22px; margin:0}
+  .sub{color:var(--muted); font-size:13px; margin:0 0 24px}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px; margin-bottom:18px}
+  label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600}
+  textarea{
+    width:100%; min-height:110px; resize:vertical; background:var(--panel2);
+    color:var(--text); border:1px solid var(--border); border-radius:10px;
+    padding:12px; font-size:15px; font-family:inherit;
+  }
+  textarea:focus, select:focus, input:focus{outline:2px solid var(--accent2); border-color:transparent}
+  .row{display:flex; gap:14px; flex-wrap:wrap}
+  .field{flex:1; min-width:180px}
+  select, input[type=file]{
+    width:100%; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); border-radius:10px; padding:10px; font-size:14px;
+  }
+  .tabs{display:flex; gap:8px; margin-bottom:16px}
+  .tab{
+    flex:1; padding:10px; text-align:center; border-radius:10px; cursor:pointer;
+    background:var(--panel2); border:1px solid var(--border); font-size:14px; font-weight:600;
+    color:var(--muted); user-select:none;
+  }
+  .tab.active{background:var(--accent); color:#04150e; border-color:var(--accent)}
+  button.go{
+    margin-top:18px; width:100%; padding:14px; font-size:16px; font-weight:700;
+    background:var(--accent2); color:#04122a; border:none; border-radius:10px; cursor:pointer;
+  }
+  button.go:disabled{opacity:.5; cursor:not-allowed}
+  .status{margin-top:14px; font-size:14px; color:var(--muted); min-height:20px}
+  .status.err{color:var(--err)}
+  .status.ok{color:var(--accent)}
+  audio{width:100%; margin-top:16px}
+  .hidden{display:none}
+  .spin{display:inline-block; width:14px; height:14px; border:2px solid var(--muted);
+    border-top-color:transparent; border-radius:50%; animation:sp 1s linear infinite; vertical-align:-2px; margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .pill{display:inline-block; font-size:11px; background:var(--panel2); color:var(--muted);
+    border:1px solid var(--border); border-radius:999px; padding:2px 9px; margin-left:6px}
+  .note{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.4}
+
+  /* recorder */
+  .recorder{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+  .rec-btn{
+    background:var(--accent); color:#04150e; border:none; border-radius:10px;
+    padding:11px 18px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .rec-btn.recording{background:var(--err); color:#fff; animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  .rec-timer{font-variant-numeric:tabular-nums; font-size:14px; color:var(--muted); min-width:38px}
+  .rec-status{font-size:13px; color:var(--muted)}
+  .rec-status.ok{color:var(--accent)}
+  .rec-status.err{color:var(--err)}
+  #recPreview{margin-top:12px; padding:12px; background:var(--panel2); border:1px solid var(--border); border-radius:10px}
+  #recPreview audio{width:100%; margin-top:6px}
+  .rec-actions{display:flex; align-items:center; gap:12px; margin-top:8px}
+  .mini{
+    background:transparent; color:var(--text); border:1px solid var(--border);
+    border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;
+  }
+  .mini:hover{border-color:var(--accent2)}
+  .or-line{text-align:center; color:var(--muted); font-size:12px; margin:14px 0 8px}
+
+  /* output mode */
+  .out-mode{margin-top:16px}
+  .om-tabs{display:flex; gap:8px; margin-top:6px}
+  .om-tab{
+    flex:1; padding:9px; text-align:center; border-radius:10px; cursor:pointer;
+    background:var(--panel2); border:1px solid var(--border); font-size:13px; font-weight:600;
+    color:var(--muted); user-select:none;
+  }
+  .om-tab.active{background:var(--accent2); color:#04122a; border-color:var(--accent2)}
+  button.stop{background:var(--err); color:#fff; margin-top:10px}
+  .live{
+    margin-top:12px; font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums;
+    min-height:18px;
+  }
+  .live b{color:var(--accent)}
+  .bars{display:inline-flex; gap:3px; align-items:flex-end; height:14px; margin-right:8px}
+  .bars span{width:3px; background:var(--accent); border-radius:2px; animation:bar .9s ease-in-out infinite}
+  .bars span:nth-child(2){animation-delay:.15s}
+  .bars span:nth-child(3){animation-delay:.3s}
+  .bars span:nth-child(4){animation-delay:.45s}
+  @keyframes bar{0%,100%{height:3px}50%{height:14px}}
+
+  /* latency slider */
+  .lat-row{margin-top:12px}
+  .lat-row label{display:flex; justify-content:space-between; align-items:baseline}
+  .lat-val{font-weight:400; color:var(--accent2)}
+  input[type=range]{width:100%; margin-top:6px; accent-color:var(--accent2)}
+  .lat-scale{display:flex; justify-content:space-between; font-size:11px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="logo">🐸</span>
+    <h1>Coqui XTTS v2 — Speech Quality Test</h1>
+  </header>
+  <p class="sub">Model: <strong>{{ speakers|length }}</strong> built-in voices · <strong>{{ languages|length }}</strong> languages · Hindi &amp; English included</p>
+
+  <div class="card">
+    <label>Text to speak</label>
+    <textarea id="text" placeholder="Type something… (English, Hindi, or any supported language)">नमस्ते! यह कोक्वी टेक्स्ट टू स्पीच की गुणवत्ता परीक्षण है।</textarea>
+
+    <div class="row" style="margin-top:14px">
+      <div class="field">
+        <label>Language</label>
+        <select id="language">
+          {% for lang in languages %}
+          <option value="{{ lang }}" {% if lang == 'hi' %}selected{% endif %}>
+            {{ labels.get(lang, lang) }} ({{ lang }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="tabs" style="margin-top:16px">
+      <div class="tab active" data-mode="builtin">Built-in speaker</div>
+      <div class="tab" data-mode="clone">Clone from audio</div>
+    </div>
+
+    <div id="builtinBox" class="field">
+      <label>Speaker</label>
+      <select id="speaker">
+        {% for s in speakers %}
+        <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+      </select>
+      <p class="note">Tip: for natural <b>Hindi</b>, built-in voices have a foreign accent because they were trained mostly on English. Use “Clone from audio” with a clean Hindi recording for a native-sounding voice.</p>
+    </div>
+
+    <div id="cloneBox" class="field hidden">
+      <label>Your voice — record below or upload a file (6–30s of clean speech)</label>
+
+      <div class="recorder">
+        <button type="button" class="rec-btn" id="recBtn">🎙 Start recording</button>
+        <span class="rec-timer" id="recTimer">0:00</span>
+        <span class="rec-status" id="recStatus"></span>
+      </div>
+
+      <div id="recPreview" class="hidden">
+        <label>Your recording</label>
+        <audio id="recPlayer" controls></audio>
+        <div class="rec-actions">
+          <button type="button" class="mini" id="recAgain">↻ Re-record</button>
+          <span class="note" id="recMeta"></span>
+        </div>
+      </div>
+
+      <div class="or-line">— or upload a file —</div>
+      <input type="file" id="reference" accept="audio/*">
+
+      <p class="note">Speak clearly for 6–30 seconds. The model will mimic your voice while speaking the text in the selected language. On CPU this takes ~10–20s.</p>
+    </div>
+
+    <div class="out-mode">
+      <label>Output</label>
+      <div class="om-tabs">
+        <div class="om-tab active" data-out="buffered">Buffered</div>
+        <div class="om-tab" data-out="stream">Real-time ⚡</div>
+      </div>
+      <div class="lat-row" id="latRow">
+        <label>Latency vs smoothness
+          <span class="lat-val" id="latVal">fast · 0.7s first audio</span>
+        </label>
+        <input type="range" id="chunkSize" min="1" max="20" value="4" step="1">
+        <div class="lat-scale"><span>lower = faster start</span><span>higher = smoother</span></div>
+      </div>
+    </div>
+
+    <button class="go" id="go">Generate speech</button>
+    <button class="go stop hidden" id="stop">■ Stop</button>
+    <div class="status" id="status"></div>
+    <audio id="player" class="hidden" controls></audio>
+    <div class="live" id="live"></div>
+  </div>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const builtinBox = document.getElementById('builtinBox');
+  const cloneBox = document.getElementById('cloneBox');
+  let mode = 'builtin';
+
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    mode = t.dataset.mode;
+    builtinBox.classList.toggle('hidden', mode !== 'builtin');
+    cloneBox.classList.toggle('hidden', mode !== 'clone');
+  }));
+
+  const go = document.getElementById('go');
+  const statusEl = document.getElementById('status');
+  const player = document.getElementById('player');
+
+  // ---- Voice recording (MediaRecorder -> WAV) ------------------------------
+  const recBtn = document.getElementById('recBtn');
+  const recTimer = document.getElementById('recTimer');
+  const recStatus = document.getElementById('recStatus');
+  const recPreview = document.getElementById('recPreview');
+  const recPlayer = document.getElementById('recPlayer');
+  const recAgain = document.getElementById('recAgain');
+  const recMeta = document.getElementById('recMeta');
+
+  let mediaRecorder = null;
+  let recChunks = [];
+  let recStream = null;
+  let recTimerId = null;
+  let recSeconds = 0;
+  let recordedFile = null;      // File (WAV) ready to send as clone reference
+  let recordedSeconds = 0;
+
+  recBtn.addEventListener('click', async () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') { stopRecording(); return; }
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+    } catch (e) {
+      recStatus.className = 'rec-status err';
+      recStatus.textContent = 'Mic access denied (' + e.name + ')';
+      return;
+    }
+    recChunks = [];
+    const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
+      .find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+    mediaRecorder = mime ? new MediaRecorder(recStream, { mimeType: mime })
+                         : new MediaRecorder(recStream);
+    mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+    mediaRecorder.onstop = onRecStop;
+    mediaRecorder.start();
+    recSeconds = 0; recTimer.textContent = '0:00';
+    recBtn.textContent = '⏹ Stop recording';
+    recBtn.classList.add('recording');
+    recStatus.className = 'rec-status';
+    recStatus.textContent = '';
+    recPreview.classList.add('hidden');
+    recTimerId = setInterval(() => {
+      recSeconds++;
+      recTimer.textContent = fmt(recSeconds);
+      if (recSeconds >= 60) stopRecording();   // safety cap
+    }, 1000);
+  });
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+    clearInterval(recTimerId);
+    recBtn.textContent = '🎙 Re-record';
+    recBtn.classList.remove('recording');
+    if (recStream) recStream.getTracks().forEach(t => t.stop());
+  }
+
+  async function onRecStop() {
+    const blob = new Blob(recChunks, { type: (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm' });
+    recPlayer.src = URL.createObjectURL(blob);
+    recStatus.className = 'rec-status';
+    recStatus.textContent = 'converting…';
+    try {
+      const wav = await webmBlobToWav(blob);
+      recordedSeconds = recSeconds;
+      recordedFile = new File([wav], 'recording.wav', { type: 'audio/wav' });
+      recMeta.textContent = `Ready · ~${recordedSeconds}s · ${Math.round(recordedFile.size/1024)} KB`;
+      recPreview.classList.remove('hidden');
+      recStatus.className = 'rec-status ok';
+      recStatus.textContent = 'Ready ✔';
+      clearFileInput();
+      if (recordedSeconds < 3) {
+        recStatus.className = 'rec-status err';
+        recStatus.textContent = 'Too short — aim for 6–30s';
+      }
+    } catch (e) {
+      recordedFile = null;
+      recStatus.className = 'rec-status err';
+      recStatus.textContent = 'Convert failed: ' + e.message;
+    }
+  }
+
+  recAgain.addEventListener('click', () => { recBtn.click(); });
+
+  // Convert a WebM/Opus (or mp4) blob to 16-bit PCM WAV using Web Audio API.
+  async function webmBlobToWav(blob) {
+    const arrayBuf = await blob.arrayBuffer();
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    let audioBuf;
+    try {
+      audioBuf = await ac.decodeAudioData(arrayBuf);
+    } finally {
+      ac.close && ac.close();
+    }
+    return audioBufferToWav(audioBuf);
+  }
+
+  function audioBufferToWav(buffer) {
+    const numCh = buffer.numberOfChannels;
+    const sr = buffer.sampleRate;
+    const len = buffer.length;
+    const bytes = len * numCh * 2;
+    const ab = new ArrayBuffer(44 + bytes);
+    const view = new DataView(ab);
+    writeStr(view, 0, 'RIFF');
+    view.setUint32(4, 36 + bytes, true);
+    writeStr(view, 8, 'WAVE');
+    writeStr(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);              // PCM
+    view.setUint16(22, numCh, true);
+    view.setUint32(24, sr, true);
+    view.setUint32(28, sr * numCh * 2, true); // byte rate
+    view.setUint16(32, numCh * 2, true);      // block align
+    view.setUint16(34, 16, true);             // bits per sample
+    writeStr(view, 36, 'data');
+    view.setUint32(40, bytes, true);
+
+    const chans = [];
+    for (let c = 0; c < numCh; c++) chans.push(buffer.getChannelData(c));
+    let offset = 44;
+    for (let i = 0; i < len; i++) {
+      for (let c = 0; c < numCh; c++) {
+        let s = Math.max(-1, Math.min(1, chans[c][i]));
+        view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        offset += 2;
+      }
+    }
+    return ab;
+  }
+
+  function writeStr(view, offset, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+
+  function fmt(sec) {
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function clearFileInput() { document.getElementById('reference').value = ''; }
+
+  // If the user uploads a file, it overrides any recording.
+  document.getElementById('reference').addEventListener('change', () => {
+    if (document.getElementById('reference').files[0]) {
+      recordedFile = null;
+      recPreview.classList.add('hidden');
+      recStatus.className = 'rec-status';
+      recStatus.textContent = 'using uploaded file';
+    }
+  });
+
+  // ---- Output mode (Buffered | Real-time) ----------------------------------
+  let outMode = 'buffered';
+  const omTabs = document.querySelectorAll('.om-tab');
+  const stopBtn = document.getElementById('stop');
+  const liveEl = document.getElementById('live');
+  omTabs.forEach(t => t.addEventListener('click', () => {
+    omTabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    outMode = t.dataset.out;
+    document.getElementById('latRow').style.display = outMode === 'stream' ? '' : 'none';
+  }));
+  // hide slider until Real-time is selected
+  document.getElementById('latRow').style.display = 'none';
+
+  const chunkSlider = document.getElementById('chunkSize');
+  const latVal = document.getElementById('latVal');
+  const LAT_LABEL = { 1:'fastest · 0.35s', 2:'very fast · 0.5s', 3:'fast · 0.6s', 4:'fast · 0.7s',
+                      6:'balanced · 0.9s', 8:'balanced · 1.2s', 12:'smooth · 1.8s', 16:'smoother · 2.4s', 20:'smoothest · 3s' };
+  function updateLatLabel() {
+    const v = +chunkSlider.value;
+    latVal.textContent = (LAT_LABEL[v] || (v + ' tokens')) ;
+  }
+  chunkSlider.addEventListener('input', updateLatLabel);
+  updateLatLabel();
+
+  function buildFormData() {
+    const text = document.getElementById('text').value.trim();
+    if (!text) { showErr('Please enter some text.'); return null; }
+    const fd = new FormData();
+    fd.append('text', text);
+    fd.append('language', document.getElementById('language').value);
+    fd.append('mode', mode);
+    if (mode === 'builtin') {
+      fd.append('speaker', document.getElementById('speaker').value);
+    } else {
+      let file = recordedFile;
+      if (!file) file = document.getElementById('reference').files[0];
+      if (!file) { showErr('Record your voice or choose a reference audio file.'); return null; }
+      fd.append('reference', file);
+    }
+    return fd;
+  }
+
+  go.addEventListener('click', async () => {
+    const fd = buildFormData();
+    if (!fd) return;
+    if (outMode === 'stream') { startStreaming(fd); return; }
+
+    // ---- buffered path (unchanged behavior) ----
+    go.disabled = true;
+    statusEl.className = 'status';
+    statusEl.innerHTML = '<span class="spin"></span>Generating… (CPU takes ~15–30s)';
+    try {
+      const res = await fetch('/synthesize', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { showErr(data.error || 'Something went wrong.'); return; }
+      player.src = data.audio_url;
+      player.classList.remove('hidden');
+      statusEl.className = 'status ok';
+      statusEl.textContent = `Done in ${data.seconds}s · ${data.language}` +
+        (data.speaker ? ` · ${data.speaker}` : ' · cloned voice') + ' — press play ▶';
+      player.play().catch(()=>{});
+    } catch (e) {
+      showErr('Request failed: ' + e.message);
+    } finally {
+      go.disabled = false;
+    }
+  });
+
+  // ---- Real-time streaming playback (gapless Web Audio) --------------------
+  let audioCtx = null;
+  let nextStart = 0;
+  let streamAbort = null;
+  let streamActive = false;
+  const SAMPLE_RATE = 24000;   // XTTS output rate
+
+  function ensureCtx() {
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playPCM(int16arr) {
+    const ctx = ensureCtx();
+    const f32 = new Float32Array(int16arr.length);
+    for (let i = 0; i < int16arr.length; i++) f32[i] = int16arr[i] / 32768;
+    if (!f32.length) return;
+    const buf = ctx.createBuffer(1, f32.length, SAMPLE_RATE);
+    buf.copyToChannel(f32, 0);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    // gapless scheduling: start exactly when the previous buffer ends
+    if (nextStart < ctx.currentTime) nextStart = ctx.currentTime;
+    src.start(nextStart);
+    nextStart += buf.duration;
+  }
+
+  async function startStreaming(fd) {
+    fd.append('chunk_size', chunkSlider.value);
+    go.disabled = true;
+    stopBtn.classList.remove('hidden');
+    player.classList.add('hidden');
+    statusEl.className = 'status';
+    statusEl.innerHTML = '<span class="spin"></span>Streaming…';
+    liveEl.innerHTML = '<span class="bars"><span></span><span></span><span></span><span></span></span>buffering…';
+    nextStart = 0; ensureCtx();
+
+    streamAbort = new AbortController();
+    streamActive = true;
+    const t0 = performance.now();
+    let firstAt = null, bytes = 0, chunks = 0;
+
+    try {
+      const res = await fetch('/stream', { method: 'POST', body: fd, signal: streamAbort.signal });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showErr(err.error || 'Stream failed (' + res.status + ')');
+        return;
+      }
+      const reader = res.body.getReader();
+      let pending = new Uint8Array(0);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!streamActive) break;
+        bytes += value.length;
+        // accumulate into 16-bit (2-byte) aligned buffer
+        const merged = new Uint8Array(pending.length + value.length);
+        merged.set(pending); merged.set(value, pending.length);
+        const usable = merged.length - (merged.length % 2);
+        pending = merged.subarray(usable);
+        const int16 = new Int16Array(merged.buffer, 0, usable / 2);
+        if (firstAt === null && usable > 0) {
+          firstAt = performance.now() - t0;
+          statusEl.className = 'status ok';
+          statusEl.textContent = `🔊 Live — first audio in ${firstAt.toFixed(0)} ms`;
+        }
+        chunks++;
+        playPCM(int16);
+        const played = Math.max(0, nextStart - audioCtx.currentTime);
+        liveEl.innerHTML =
+          `<span class="bars"><span></span><span></span><span></span><span></span></span>` +
+          `streaming · first audio <b>${firstAt ? firstAt.toFixed(0) + ' ms' : '…'}</b>` +
+          ` · ${chunks} chunks · ${(bytes/1024).toFixed(0)} KB · buffer ${played.toFixed(1)}s`;
+      }
+      if (streamActive) {
+        statusEl.textContent = `✓ Stream complete in ${(performance.now()-t0)/1000 | 0}s`;
+        liveEl.textContent = '';
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') showErr('Stream error: ' + e.message);
+    } finally {
+      streamActive = false;
+      stopBtn.classList.add('hidden');
+      go.disabled = false;
+    }
+  }
+
+  stopBtn.addEventListener('click', () => {
+    streamActive = false;
+    if (streamAbort) streamAbort.abort();
+    if (audioCtx) { try { audioCtx.suspend(); } catch(e){} nextStart = 0; }
+    statusEl.className = 'status';
+    statusEl.textContent = '⏹ Stopped';
+    liveEl.textContent = '';
+    stopBtn.classList.add('hidden');
+    go.disabled = false;
+  });
+
+
+  function showErr(msg) {
+    statusEl.className = 'status err';
+    statusEl.textContent = msg;
+  }
+</script>
+</body>
+</html>
